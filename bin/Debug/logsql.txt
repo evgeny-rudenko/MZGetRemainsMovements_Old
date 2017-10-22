@@ -1,0 +1,270 @@
+declare @date11 datetime
+declare @date22 datetime
+declare @id_store int
+declare @date1 datetime
+declare @date2 datetime
+
+set @date11 = '01.08.2017'
+set @date22 = '31.08.2017'
+set @id_store =  21
+
+SET @date1 = CONVERT(DATETIME, LEFT(CONVERT(VARCHAR(20), @date11, 121),10), 121)
+SET @date2 = CONVERT(DATETIME, LEFT(CONVERT(VARCHAR(20), @date22, 121),10) + ' 23:59:59.997', 121)
+--set @date1='01.08.2017'
+--set @date2='31.08.2017'
+
+
+
+select a.d_type+';'+a.n_dok+';'+a.d_dok+';'+a.supplier+';'+isnull(a.supplier_INN,'1234567890')+';'+isnull(a.N_KKM,'')+';'+isnull(a.N_Chek,'')+';'+isnull(a.FIO_Chek,'')+';'+a.Disk_T+';'+a.Disk_Sum+';'+a.Sum_Zak+';'+a.Sum_Rozn+';'+a.PP_Teg+';'+a.Drug_code+';'+a.Drug_name+';'+a.Drug_Producer_Code+';'+a.Drug_Producer_Name+';'+a.Drug_Producer_Country+';'+a.Drug_Bar+';'+a.Cena_Zak+';'+a.Cena_Rozn+';'+ replace(convert(varchar,a.Quant),'.',',')+';'+a.Serial+';'+a.Godn+';'+a.Barecode as data
+--select *
+from 
+(
+select 
+case 
+when lm.ID_TABLE=2 then '10'
+when (lm.ID_TABLE=3 and lm.op='SUB') then '29'
+when (lm.ID_TABLE=6 and lm.op='ADD') then '19'
+when (lm.ID_TABLE=6 and lm.op='SUB') then '29'
+when (lm.ID_TABLE=8 and lm.op='ADD') then '19'
+when (lm.ID_TABLE=8 and lm.op='SUB') then '29'
+	when (lm.ID_TABLE=13 and lm.op='SUB') then '29'
+	when (lm.ID_TABLE=13 and lm.op='ADD') then '19'
+when (lm.ID_TABLE=21 and lm.op='SUB_RES') then '29'
+when (lm.ID_TABLE=21 and lm.op='SUB') then '29'
+when (lm.ID_TABLE=19 and  lm.op!='RETURN')then '20'
+--when lm.ID_TABLE!=19 then '29'
+when (lm.ID_TABLE=19 and lm.op='RETURN') then '19'
+end as d_type,
+case when lm.ID_TABLE=19 then (select MNEMOCODE from CASH_SESSION where ID_CASH_SESSION_GLOBAL=lm.id_document) else
+l.DOC_NUM end as n_dok,
+(select dbo.formatdatetime('ddmmyyyy',lm.DATE_OP)) as d_dok,
+(select name from contractor where id_contractor=l.ID_SUPPLIER) as supplier, 
+(select INN  from contractor where id_contractor=l.ID_SUPPLIER) as supplier_INN, 
+case when lm.id_table=19 then
+isnull(convert(varchar,(select NUMBER_CASH_REGISTER from CASH_SESSION where ID_CASH_SESSION_GLOBAL=lm.id_document)),'27876')
+end as N_KKM,
+convert(varchar,(select id_cheque from cheque where id_cheque_global=(select ID_CHEQUE_GLOBAL from cheque_item where id_lot_global=lm.ID_LOT_GLOBAL and ID_CHEQUE_ITEM_GLOBAL=lm.ID_DOCUMENT_ITEM))) as N_Chek,
+isnull((select FULL_NAME from META_USER where user_num=(select ID_USER_DATA from cheque where ID_CHEQUE_GLOBAL=(select ID_CHEQUE_GLOBAL from cheque_item where id_lot_global=lm.ID_LOT_GLOBAL and ID_CHEQUE_ITEM_GLOBAL=lm.ID_DOCUMENT_ITEM))),'') as FIO_Chek,
+--'0' as Disk_T,  -- предоставленная скидка 0-без скидки 1- скидка по условиям проекта 2-другие скидки                                                                                                                         
+--'0' as Disk_Sum,  
+
+-- предоставленная скидка 0-без скидки 1- скидка по условиям проекта 2-другие скидки    
+case when 
+(select top(1) name from DISCOUNT2_PROGRAM where name <> 'Скидка: Округление' and ID_DISCOUNT2_PROGRAM_GLOBAL in 
+(select top(1) ID_DISCOUNT2_PROGRAM_GLOBAL from DISCOUNT2_MAKE_ITEM where ID_CHEQUE_ITEM_GLOBAL=lm.ID_DOCUMENT_ITEM)) 
+<>'Мелодия Здоровья'and lm.DISCOUNT_ACC<>0.00  then '2'
+when (select name from DISCOUNT2_PROGRAM where name <>'Скидка: Округление' and ID_DISCOUNT2_PROGRAM_GLOBAL in 
+(select top(1) ID_DISCOUNT2_PROGRAM_GLOBAL from DISCOUNT2_MAKE_ITEM where ID_CHEQUE_ITEM_GLOBAL=lm.ID_DOCUMENT_ITEM)) 
+='Мелодия Здоровья'and lm.DISCOUNT_ACC<>0.00  then '1'
+else '0'
+end
+as Disk_T,
+isnull(convert(varchar,lm.DISCOUNT_ACC),'0') as Disk_Sum, 
+
+case when lm.op='RETURN' then replace(convert(varchar,l.PRICE_SUP*lm.QUANTITY_SUB*(-1)),'.',',') else replace(convert(varchar,l.PRICE_SUP*lm.QUANTITY_SUB),'.',',') end as Sum_Zak,
+case when lm.op='RETURN' then replace(convert(varchar,l.PRICE_SAL*lm.QUANTITY_SUB*(-1)),'.',',') else replace(convert(varchar,l.PRICE_SAL*lm.QUANTITY_SUB),'.',',') end as Sum_Rozn,
+'0' as PP_Teg,
+convert(varchar,l.ID_GOODS) as Drug_code,
+(select  name from goods where id_goods=l.ID_GOODS) as Drug_name,
+convert(varchar,(select id_producer from goods where id_goods=l.ID_GOODS)) as Drug_Producer_Code,
+(select name from producer where id_producer=(select  id_producer from goods where id_goods=l.ID_GOODS)) as Drug_Producer_Name,
+(select name from country where id_country=(select id_country from producer where id_producer=(select  id_producer from goods where id_goods=l.id_goods))) as Drug_Producer_Country,
+isnull((select top(1) code from bar_code where id_goods=l.ID_GOODS),'1234567890123') as Drug_Bar,
+isnull(replace(convert(varchar,l.PRICE_SUP),'.',','),'0') as Cena_Zak,
+replace(convert(varchar,l.PRICE_SAL),'.',',') as Cena_Rozn,
+case when lm.op='RETURN' then replace(convert(varchar,lm.QUANTITY_SUB*(-1)),'.',',') 
+when lm.op='ADD' then replace(convert(varchar,lm.QUANTITY_ADD),'.',',')
+else replace(convert(varchar,lm.QUANTITY_SUB),'.',',') 
+end as Quant,
+isnull((select SERIES_NUMBER from SERIES where ID_SERIES=l.ID_SERIES),'12345') as Serial,
+isnull((select dbo.formatdatetime('ddmmyyyy', BEST_BEFORE) from SERIES where ID_SERIES=l.ID_SERIES),'01012020') as Godn,
+isnull(l.INTERNAL_BARCODE,'0') as Barecode
+from lot_movement lm,lot l
+where 
+lm.ID_LOT_GLOBAL=l.id_lot_global
+--and lm.ID_LOT_GLOBAL='FAB17D06-6A46-4B6F-B937-12304F5AFFDE'
+ and l.id_store=@id_store
+--and l.INTERNAL_BARCODE='2027001784799'
+ and
+lm.date_op between convert(datetime,@date1) and convert(datetime,@date2)
+and lm.op in ('SUB','RETURN','ADD')
+and lm.ID_TABLE in (2,3,8,6,13,19,20,21)
+/*and l.id_goods in 
+(
+select id_goods from goods_code where ID_CONTRACTOR=5476 and isnull(DATE_DELETED,1)=1
+)*/
+
+--and l.ID_GOODS in (223151,212627)
+)a
+union
+
+select a.d_type+';'+a.n_dok+';'+a.d_dok+';'+a.supplier+';'+isnull(a.supplier_INN,'1234567890')+';'+a.N_KKM+';'+a.N_Chek+';'+a.FIO_Chek+';'+a.Disk_T+';'+a.Disk_Sum+';'+a.Sum_Zak+';'+a.Sum_Rozn+';'+a.PP_Teg+';'+a.Drug_code+';'+a.Drug_name+';'+a.Drug_Producer_Code+';'+a.Drug_Producer_Name+';'+a.Drug_Producer_Country+';'+a.Drug_Bar+';'+a.Cena_Zak+';'+a.Cena_Rozn+';'+ replace(convert(varchar,a.Quant),'.',',')+';'+a.Serial+';'+a.Godn+';'+a.Barecode as data
+--select *
+from 
+(
+select 
+/*case 
+when lm.ID_TABLE=2 then '0'
+when lm.ID_TABLE=8 then '0'
+--when lm.ID_TABLE!=19 then '29'
+end as*/ '19' d_type,
+l.DOC_NUM as n_dok,
+(select dbo.formatdatetime('ddmmyyyy',@date1)) as d_dok,
+(select name from contractor where id_contractor=l.ID_SUPPLIER) as supplier, 
+(select INN  from contractor where id_contractor=l.ID_SUPPLIER) as supplier_INN, 
+/*case when lm.id_table=19 then
+(isnull(convert(varchar,(select NUMBER_CASH_REGISTER from CASH_SESSION where ID_CASH_SESSION_GLOBAL=lm.id_document)),'27876'))
+end as N_KKM,*/
+'' as N_KKM,
+--convert(varchar,(select id_cheque from cheque where id_cheque_global=(select ID_CHEQUE_GLOBAL from cheque_item where id_lot_global=lm.ID_LOT_GLOBAL and ID_CHEQUE_ITEM_GLOBAL=lm.ID_DOCUMENT_ITEM))) as N_Chek,
+'' as N_Chek,
+--(select FULL_NAME from META_USER where user_num=(select ID_USER_DATA from cheque where ID_CHEQUE_GLOBAL=(select ID_CHEQUE_GLOBAL from cheque_item where id_lot_global=lm.ID_LOT_GLOBAL and ID_CHEQUE_ITEM_GLOBAL=lm.ID_DOCUMENT_ITEM))) as FIO_Chek,
+'' as FIO_Chek,
+--'' as Disk_T,                                                                                                                           
+--'' as Disk_Sum,  
+
+-- предоставленная скидка 0-без скидки 1- скидка по условиям проекта 2-другие скидки    
+case when 
+(select top(1) name from DISCOUNT2_PROGRAM where  name <>'Скидка: Округление' and ID_DISCOUNT2_PROGRAM_GLOBAL in 
+(select top(1) ID_DISCOUNT2_PROGRAM_GLOBAL from DISCOUNT2_MAKE_ITEM where ID_CHEQUE_ITEM_GLOBAL=lm.ID_DOCUMENT_ITEM)) 
+<>'Мелодия Здоровья'and lm.DISCOUNT_ACC<>0.00  then '2'
+when (select name from DISCOUNT2_PROGRAM where name <>'Скидка: Округление' and ID_DISCOUNT2_PROGRAM_GLOBAL in 
+(select ID_DISCOUNT2_PROGRAM_GLOBAL from DISCOUNT2_MAKE_ITEM where ID_CHEQUE_ITEM_GLOBAL=lm.ID_DOCUMENT_ITEM)) 
+='Мелодия Здоровья'and lm.DISCOUNT_ACC<>0.00  then '1'
+else '0'
+end
+as Disk_T,
+isnull(convert(varchar,lm.DISCOUNT_ACC),'0') as Disk_Sum, 
+
+
+--replace(convert(varchar,l.PRICE_SUP*lm.QUANTITY_SUB),'.',',') as Sum_Zak,
+'' as Sum_Zak,
+''  as Sum_Rozn,--replace(convert(varchar,l.PRICE_Sal*lm.QUANTITY_SUB),'.',',') as Sum_Rozn,
+'0'as PP_Teg,
+convert(varchar,l.ID_GOODS) as Drug_code,
+(select  name from goods where id_goods=l.ID_GOODS) as Drug_name,
+convert(varchar,(select id_producer from goods where id_goods=l.ID_GOODS)) as Drug_Producer_Code,
+(select name from producer where id_producer=(select  id_producer from goods where id_goods=l.ID_GOODS)) as Drug_Producer_Name,
+(select name from country where id_country=(select id_country from producer where id_producer=(select  id_producer from goods where id_goods=l.id_goods))) as Drug_Producer_Country,
+isnull((select top(1) code from bar_code where id_goods=l.ID_GOODS),'1234567890123') as Drug_Bar,
+replace(convert(varchar,l.PRICE_SUP),'.',',') as Cena_Zak,
+replace(convert(varchar,l.PRICE_SAL),'.',',') as Cena_Rozn,
+--replace(convert(varchar,LM.QUANTITY_ADD - LM.QUANTITY_SUB - LM.QUANTITY_RES),'.',',') as Quant,
+--(L.QUANTITY_ADD - L.QUANTITY_SUB - L.QUANTITY_RES ),
+
+(SELECT 
+	
+	AMOUNT_OST = SUM(LM2.QUANTITY_ADD - LM2.QUANTITY_SUB)
+FROM LOT_movement LM2
+INNER JOIN LOT L2 ON L2.ID_LOT_GLOBAL = LM2.ID_LOT_GLOBAL
+WHERE
+LM2.ID_LOT_GLOBAL=l.id_lot_global  and 
+(lm2.QUANTITY_ADD!=0 or lm2.QUANTITY_SUB!=0)   
+and
+LM2.DATE_OP <=@date1
+GROUP BY lm2.ID_LOT_GLOBAL
+)
+as Quant,
+isnull((select SERIES_NUMBER from SERIES where ID_SERIES=l.ID_SERIES),'12345') as Serial,
+isnull((select dbo.formatdatetime('ddmmyyyy', BEST_BEFORE) from SERIES where ID_SERIES=l.ID_SERIES),'01012020') as Godn,
+l.INTERNAL_BARCODE as Barecode,
+LM.CODE_OP, lm.ID_TABLE
+from lot_movement lm,lot l
+where 
+lm.ID_LOT_GLOBAL=l.id_lot_global
+--and lm.ID_LOT_GLOBAL='FAB17D06-6A46-4B6F-B937-12304F5AFFDE'
+and 
+lm.date_op<=@date1-- and convert(datetime,'01.04.2016 21:00')
+--and lm.op='ADD'
+and lm.op not in ('SUB','RES','CHEQUE_RES')
+--and lm.ID_TABLE in (2,8,6,13)
+/*and l.ID_GOODS in
+(select id_goods from d2a_GOODS_CODE_MelodyHealth where DATE_create>getdate()-1)*/
+and l.id_store=@id_store
+--and l.INTERNAL_BARCODE='2027001784799'
+/*and l.id_goods in 
+(
+select id_goods from goods_code where ID_CONTRACTOR=5476 and isnull(DATE_DELETED,1)=1
+)*/
+) a where a.Quant>0
+
+
+
+
+--select * from goods where id_goods=212627
+--select * from table_data
+--select * from LOT_MOVEMENT where ID_TABLE=6 and ID_LOT_GLOBAL=(select ID_LOT_GLOBAL from lot where INTERNAL_BARCODE='2020000481478')
+
+
+--and l.ID_STORE=149 --(select * from store)
+--and l.ID_LOT_GLOBAL='172DEAB5-8FE3-41A5-B7AC-AF50F4E44CCA'
+
+/*
+
+ select * from lot where ID_LOT_GLOBAL='172DEAB5-8FE3-41A5-B7AC-AF50F4E44CCA'
+select * from goods where id_goods=189399 
+
+
+
+
+select * from cash_session
+
+
+select  
+'20',
+'60',
+(select dbo.formatdatetime('ddmmyyyy',c.DATE_CHEQUE)), 
+(select name from contractor where id_contractor=(select ID_SUPPLIER from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL)), 
+(select INN  from contractor where id_contractor=(select ID_SUPPLIER from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL)), 
+convert(varchar,isnull((select NUMBER_CASH_REGISTER from CASH_SESSION where ID_CASH_SESSION_GLOBAL = (select ID_CASH_SESSION_GLOBAL from cheque where ID_CHEQUE_GLOBAL=ci.ID_CHEQUE_GLOBAL)) ,'27876')),
+convert(varchar,(select id_cheque from cheque where ID_CHEQUE_GLOBAL=ci.ID_CHEQUE_GLOBAL)), 
+(select FULL_NAME from META_USER where user_num=(select ID_USER_DATA from cheque where ID_CHEQUE_GLOBAL=ci.ID_CHEQUE_GLOBAL)),
+'0',                                                                                                                           
+'0',                                                                                                                                                                                                     +';'+
+replace(convert(varchar,(select PRICE_SUP from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL)*ci.QUANTITY),'.',','),
+replace(convert(varchar,(select PRICE_SAL from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL)*ci.QUANTITY),'.',','), 
+'0',
+convert(varchar,(select id_goods from lot where id_lot_global=ci.id_lot_global)),
+(select  name from goods where id_goods=(select  id_goods from lot where id_lot_global=ci.id_lot_global)),
+convert(varchar,(select  id_producer from goods where id_goods=(select id_goods from lot where id_lot_global=ci.id_lot_global))),
+(select name from producer where id_producer=(select  id_producer from goods where id_goods=(select id_goods from lot where id_lot_global=ci.id_lot_global))),
+(select name from country where id_country=(select id_country from producer where id_producer=(select  id_producer from goods where id_goods=(select id_goods from lot where id_lot_global=ci.id_lot_global)))),
+isnull((select top(1) code from bar_code where id_goods=ci.id_goods),'1234567890123'),
+replace(convert(varchar,(select PRICE_SUP from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL)),'.',','),
+replace(convert(varchar,(select PRICE_SAL from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL)),'.',','),
+replace(convert(varchar,ci.QUANTITY),'.',','),
+isnull((select SERIES_NUMBER from SERIES where ID_SERIES=(select ID_SERIES from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL)),'12345'),
+isnull((select dbo.formatdatetime('ddmmyyyy', BEST_BEFORE) from SERIES where ID_SERIES=(select ID_SERIES from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL)),'0101select 2050'),
+(select INTERNAL_BARCODE from lot where ID_LOT_GLOBAL=ci.ID_LOT_GLOBAL) 
+
+ from cheque_item ci,cheque c
+where ci.ID_CHEQUE_GLOBAL=c.ID_CHEQUE_GLOBAL
+--and  dbo.formatdatetime('ddmmyyyy',c.DATE_CHEQUE)= dbo.formatdatetime('ddmmyyyy',getdate())
+and DATE_CHEQUE between convert(datetime,'01.04.2016 08:00') and convert(datetime,'10.04.2016 21:00')
+and ci.id_goods in 
+(
+select id_goods from goods_code where ID_CONTRACTOR=5476
+)
+
+drop table #mov
+
+
+select *
+from lot_movement lm,lot l
+where 
+lm.ID_LOT_GLOBAL=l.id_lot_global
+and 
+lm.date_op<convert(datetime,'01.04.2016 08:00')
+and lm.op='SUB'
+
+select * from lot_movement
+where op='SUB'
+
+select * from cheque*/
+
+--select * from lot where INTERNAL_BARCODE='2027001735319'
+--select * from goods where id_goods=219729
+--select * from table_data
+-- select * from goods where name like ('%Циклофер%')
+
+--select * from lot_movement where ID_LOT_GLOBAL='FAB17D06-6A46-4B6F-B937-12304F5AFFDE'

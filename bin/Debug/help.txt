@@ -1,0 +1,5 @@
+Не заданы параметры 
+Примеры использования
+mzgetremainsmovements.exe store                                      - получить список складов
+mzgetremainsmovements.exe 01.01.2010 25.08.2017 1                    - выгрузить данные
+mzgetremainsmovements.exe начальная_дата конечная_дата код_склада    - выгрузить данные

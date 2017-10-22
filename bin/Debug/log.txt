@@ -1,0 +1,10 @@
+System.Data.SqlClient.SqlException (0x80131904): Вложенный запрос вернул больше одного значения. Это запрещено, когда вложенный запрос следует после =, !=, <, <=, >, >= или используется в качестве выражения.
+   в System.Data.SqlClient.SqlConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+   в System.Data.SqlClient.TdsParser.ThrowExceptionAndWarning(TdsParserStateObject stateObj, Boolean callerHasConnectionLock, Boolean asyncClose)
+   в System.Data.SqlClient.TdsParser.TryRun(RunBehavior runBehavior, SqlCommand cmdHandler, SqlDataReader dataStream, BulkCopySimpleResultSet bulkCopyHandler, TdsParserStateObject stateObj, Boolean& dataReady)
+   в System.Data.SqlClient.SqlDataReader.TryHasMoreRows(Boolean& moreRows)
+   в System.Data.SqlClient.SqlDataReader.TryReadInternal(Boolean setTimeout, Boolean& more)
+   в System.Data.SqlClient.SqlDataReader.Read()
+   в MZGetRemainsMovements.Program.ExportTable(SqlConnection connection, String tableName, String fName) в C:\Users\evgeny\documents\visual studio 2017\Projects\MZGetRemainsMovements\MZGetRemainsMovements\Program.cs:строка 202
+ClientConnectionId:d3f644d4-2db9-45e2-8449-f302a07117ad
+Error Number: 512, State: 1, Class: 16

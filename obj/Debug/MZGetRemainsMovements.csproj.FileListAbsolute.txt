@@ -1,0 +1,7 @@
+c:\users\evgeny\documents\visual studio 2017\Projects\MZGetRemainsMovements\MZGetRemainsMovements\bin\Debug\MZGetRemainsMovements.exe
+c:\users\evgeny\documents\visual studio 2017\Projects\MZGetRemainsMovements\MZGetRemainsMovements\bin\Debug\MZGetRemainsMovements.pdb
+c:\users\evgeny\documents\visual studio 2017\Projects\MZGetRemainsMovements\MZGetRemainsMovements\obj\Debug\MZGetRemainsMovements.csprojResolveAssemblyReference.cache
+c:\users\evgeny\documents\visual studio 2017\Projects\MZGetRemainsMovements\MZGetRemainsMovements\obj\Debug\MZGetRemainsMovements.exe
+c:\users\evgeny\documents\visual studio 2017\Projects\MZGetRemainsMovements\MZGetRemainsMovements\obj\Debug\MZGetRemainsMovements.pdb
+c:\users\evgeny\documents\visual studio 2017\Projects\MZGetRemainsMovements\MZGetRemainsMovements\bin\Debug\MZGetRemainsMovements.exe.config
+C:\Users\evgeny\documents\visual studio 2017\Projects\MZGetRemainsMovements\MZGetRemainsMovements\obj\Debug\MZGetRemainsMovements.csproj.CoreCompileInputs.cache
